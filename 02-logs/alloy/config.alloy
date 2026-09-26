@@ -1,0 +1,589 @@
+// ============================================================
+// GRAFANA ALLOY - OBSERVABILITY PIPELINE
+// ============================================================
+//
+// This Alloy configuration handles observability signals:
+//
+//   1. Logs   : Kubernetes Pods -> Alloy -> Loki
+//   2. Metrics: Payment API -> Alloy -> Mimir
+//   3. Traces : Payment API -> Alloy -> Tempo
+//   4. Self   : Alloy internal metrics -> Mimir
+//
+// Alloy acts as the telemetry collector and router.
+//
+// ============================================================
+
+
+// ============================================================
+// GLOBAL LOGGING
+// ============================================================
+//
+// Controls Alloy's own internal logs.
+//
+// level = info
+//   Shows normal operational information and errors.
+//
+// format = logfmt
+//   Human-readable key=value style logs.
+//
+// ============================================================
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+
+// ============================================================
+// 1. LOGS PIPELINE
+// ============================================================
+//
+// Flow:
+//
+// Kubernetes API
+//      |
+//      v
+// Pod Discovery
+//      |
+//      v
+// Discover /var/log/pods/*.log
+//      |
+//      v
+// Alloy reads container logs
+//      |
+//      v
+// Loki
+//
+// ============================================================
+
+
+// ------------------------------------------------------------
+// 1.1 Discover Kubernetes Pods
+// ------------------------------------------------------------
+//
+// role = "pod"
+// tells Alloy to discover Kubernetes Pods.
+//
+// Alloy uses the Kubernetes API through its ServiceAccount.
+//
+
+discovery.kubernetes "pods" {
+  role = "pod"
+}
+
+
+// ------------------------------------------------------------
+// 1.2 Add Kubernetes metadata and log file path
+// ------------------------------------------------------------
+//
+// discovery.relabel modifies the targets discovered above.
+//
+// Important labels:
+//
+// namespace -> Kubernetes namespace
+// pod       -> Pod name
+// container -> Container name
+// node      -> Kubernetes node
+// app       -> Application label
+//
+// __path__ tells Alloy where the actual container log file is.
+//
+
+discovery.relabel "pods" {
+  targets = discovery.kubernetes.pods.targets
+
+
+  // ----------------------------------------------------------
+  // Build the path to Kubernetes container log files
+  // ----------------------------------------------------------
+  //
+  // Kubernetes stores container logs under:
+  //
+  // /var/log/pods/<pod UID>/<container name>/*.log
+  //
+  // Alloy has /var/log mounted from the Kubernetes node.
+  //
+
+  rule {
+    source_labels = [
+      "__meta_kubernetes_pod_uid",
+      "__meta_kubernetes_pod_container_name",
+    ]
+
+    separator    = "/"
+    target_label = "__path__"
+
+    replacement = "/var/log/pods/*$1/*.log"
+  }
+
+
+  // ----------------------------------------------------------
+  // Kubernetes namespace
+  // ----------------------------------------------------------
+
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+
+
+  // ----------------------------------------------------------
+  // Kubernetes Pod name
+  // ----------------------------------------------------------
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+
+
+  // ----------------------------------------------------------
+  // Kubernetes container name
+  // ----------------------------------------------------------
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label  = "container"
+  }
+
+
+  // ----------------------------------------------------------
+  // Kubernetes node name
+  // ----------------------------------------------------------
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_node_name"]
+    target_label = "node"
+  }
+
+
+  // ----------------------------------------------------------
+  // Application label
+  // ----------------------------------------------------------
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    target_label  = "app"
+  }
+}
+
+
+// ------------------------------------------------------------
+// 1.3 Match the discovered log files
+// ------------------------------------------------------------
+//
+// Takes the targets produced by discovery.relabel
+// and identifies the actual files Alloy should read.
+//
+
+local.file_match "pods" {
+  path_targets = discovery.relabel.pods.output
+}
+
+
+// ------------------------------------------------------------
+// 1.4 Read / tail Kubernetes log files
+// ------------------------------------------------------------
+//
+// Alloy continuously reads the discovered container logs.
+//
+// forward_to sends the log entries to Loki writer.
+//
+
+loki.source.file "pods" {
+  targets = local.file_match.pods.targets
+
+  forward_to = [
+    loki.write.local.receiver,
+  ]
+}
+
+
+// ------------------------------------------------------------
+// 1.5 Send logs to Loki
+// ------------------------------------------------------------
+//
+// Loki is our logs backend.
+//
+// Alloy pushes logs to Loki using Loki's HTTP API.
+//
+
+loki.write "local" {
+  endpoint {
+    url = "http://192.168.80.130:3100/loki/api/v1/push"
+  }
+}
+
+
+// ============================================================
+// 2. METRICS PIPELINE
+// ============================================================
+//
+// Flow:
+//
+// Kubernetes API
+//      |
+//      v
+// Discover Payment API Pods
+//      |
+//      v
+// Pod IP : 5000
+//      |
+//      v
+// /metrics
+//      |
+//      v
+// Alloy Prometheus Scraper
+//      |
+//      v
+// Mimir
+//
+// Important:
+//
+// prometheus.scrape here is an Alloy component.
+// It does NOT mean the separate Prometheus server is doing
+// this scrape.
+//
+// ============================================================
+
+
+// ------------------------------------------------------------
+// 2.1 Discover Kubernetes Pods for metrics
+// ------------------------------------------------------------
+
+discovery.kubernetes "metrics_pods" {
+  role = "pod"
+}
+
+
+// ------------------------------------------------------------
+// 2.2 Filter and prepare Payment API targets
+// ------------------------------------------------------------
+//
+// We only want Pods with:
+//
+// app=payment-api
+//
+// Then we construct:
+//
+// <Pod IP>:5000
+//
+// because Payment API exposes /metrics on port 5000.
+//
+
+discovery.relabel "metrics_pods" {
+  targets = discovery.kubernetes.metrics_pods.targets
+
+
+  // ----------------------------------------------------------
+  // Keep ONLY Payment API Pods
+  // ----------------------------------------------------------
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+
+    regex  = "payment-api"
+    action = "keep"
+  }
+
+
+  // ----------------------------------------------------------
+  // Build scrape address
+  // ----------------------------------------------------------
+  //
+  // Example:
+  //
+  // Pod IP = 10.42.0.53
+  //
+  // Result:
+  //
+  // 10.42.0.53:5000
+  //
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_ip"]
+
+    regex         = "(.+)"
+    target_label  = "__address__"
+    replacement   = "$1:5000"
+  }
+
+
+  // ----------------------------------------------------------
+  // Kubernetes namespace
+  // ----------------------------------------------------------
+
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+
+
+  // ----------------------------------------------------------
+  // Kubernetes Pod name
+  // ----------------------------------------------------------
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+
+
+  // ----------------------------------------------------------
+  // Application name
+  // ----------------------------------------------------------
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    target_label  = "app"
+  }
+}
+
+
+// ------------------------------------------------------------
+// 2.3 Scrape Payment API metrics
+// ------------------------------------------------------------
+//
+// Alloy requests:
+//
+// GET http://<pod-ip>:5000/metrics
+//
+// every 15 seconds.
+//
+// The collected metrics are forwarded to Mimir.
+//
+
+prometheus.scrape "payment_api" {
+  targets = discovery.relabel.metrics_pods.output
+
+  metrics_path    = "/metrics"
+  scrape_interval = "15s"
+
+  forward_to = [
+    prometheus.remote_write.mimir.receiver,
+  ]
+}
+
+
+// ------------------------------------------------------------
+// 2.4 Remote write metrics to Mimir
+// ------------------------------------------------------------
+//
+// Mimir is our long-term metrics backend.
+//
+// Alloy sends the scraped Prometheus metrics to Mimir
+// using Prometheus Remote Write.
+//
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://192.168.80.130:9009/api/v1/push"
+  }
+}
+
+
+// ============================================================
+// 3. TRACES PIPELINE
+// ============================================================
+//
+// Target architecture:
+//
+// Payment API
+//      |
+//      | OTLP/gRPC
+//      | :4317
+//      v
+// Alloy OTLP Receiver
+//      |
+//      v
+// Alloy OTLP Exporter
+//      |
+//      | OTLP/gRPC
+//      | :4317
+//      v
+// Tempo
+//
+// This changes the architecture from:
+//
+// Payment API -> Tempo
+//
+// to:
+//
+// Payment API -> Alloy -> Tempo
+//
+// ============================================================
+
+
+// ------------------------------------------------------------
+// 3.1 OTLP Receiver
+// ------------------------------------------------------------
+//
+// Alloy listens for OpenTelemetry traces.
+//
+// gRPC:
+//
+//   0.0.0.0:4317
+//
+// This is the standard OTLP/gRPC port.
+//
+// Later we can also enable OTLP/HTTP on 4318 if needed.
+//
+
+otelcol.receiver.otlp "payment_api" {
+
+  // ----------------------------------------------------------
+  // OTLP/gRPC receiver
+  // ----------------------------------------------------------
+
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+
+
+  // ----------------------------------------------------------
+  // Send received traces to the Tempo exporter
+  // ----------------------------------------------------------
+  //
+  // "traces" means we are routing trace telemetry.
+  //
+
+  output {
+    traces = [
+      otelcol.exporter.otlp.tempo.input,
+    ]
+  }
+}
+
+
+// ------------------------------------------------------------
+// 3.2 OTLP Exporter
+// ------------------------------------------------------------
+//
+// This component sends traces from Alloy to Tempo.
+//
+// Tempo is currently reachable through the host:
+//
+// 192.168.80.130:4317
+//
+// TLS is disabled because our local Tempo OTLP endpoint is
+// currently running as plaintext gRPC.
+//
+
+otelcol.exporter.otlp "tempo" {
+
+  client {
+
+    // --------------------------------------------------------
+    // Tempo OTLP/gRPC endpoint
+    // --------------------------------------------------------
+
+    endpoint = "192.168.80.130:4317"
+
+
+    // --------------------------------------------------------
+    // Disable TLS
+    // --------------------------------------------------------
+    //
+    // Our lab Tempo endpoint is plaintext.
+    //
+    // Production environments should normally use appropriate
+    // TLS/security configuration.
+    //
+
+    tls {
+      insecure = true
+    }
+  }
+}
+
+
+// ============================================================
+// 4. ALLOY SELF-MONITORING
+// ============================================================
+//
+// Alloy exposes its own internal Prometheus metrics on:
+//
+//   0.0.0.0:12345/metrics
+//
+// We scrape these metrics from inside Alloy itself and send
+// them through the SAME remote_write pipeline to Mimir.
+//
+// Flow:
+//
+// Alloy internal metrics
+//        |
+//        v
+// /metrics :12345
+//        |
+//        v
+// prometheus.scrape "alloy_self"
+//        |
+//        v
+// prometheus.remote_write.mimir
+//        |
+//        v
+// Mimir
+//
+// This allows Grafana to monitor the health of Alloy itself.
+//
+// Examples of useful self-metrics:
+//
+//   otelcol_receiver_accepted_spans_total
+//   otelcol_receiver_failed_spans_total
+//   otelcol_receiver_refused_spans_total
+//   otelcol_exporter_sent_spans_total
+//
+//   prometheus_remote_storage_samples_total
+//   prometheus_remote_storage_samples_failed_total
+//   prometheus_remote_storage_samples_pending
+//   prometheus_remote_storage_samples_retried_total
+//
+//   loki_write_sent_entries_total
+//   loki_write_dropped_entries_total
+//
+// ============================================================
+
+prometheus.scrape "alloy_self" {
+
+  // ----------------------------------------------------------
+  // Alloy's own metrics endpoint
+  // ----------------------------------------------------------
+  //
+  // 127.0.0.1 is used because this scrape runs inside the
+  // same Alloy process/container.
+  //
+
+  targets = [
+    {
+      "__address__" = "127.0.0.1:12345",
+    },
+  ]
+
+
+  // ----------------------------------------------------------
+  // Alloy exposes Prometheus metrics here
+  // ----------------------------------------------------------
+
+  metrics_path = "/metrics"
+
+
+  // ----------------------------------------------------------
+  // Scrape every 15 seconds
+  // ----------------------------------------------------------
+
+  scrape_interval = "15s"
+
+
+  // ----------------------------------------------------------
+  // Send Alloy self-metrics to the existing Mimir pipeline
+  // ----------------------------------------------------------
+
+  forward_to = [
+    prometheus.remote_write.mimir.receiver,
+  ]
+}
+
+
+// ============================================================
+// END OF ALLOY CONFIGURATION
+// ============================================================

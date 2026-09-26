@@ -1,0 +1,42 @@
+replicaCount: 2
+
+image:
+  repository: payment-api
+  pullPolicy: IfNotPresent
+  tag: "3.2"
+
+containerPort: 5000
+
+env:
+  SERVICE_NAME: payment-api
+  ENVIRONMENT: production
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5000
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 5000
+  initialDelaySeconds: 10
+  periodSeconds: 20
+  failureThreshold: 3
+  successThreshold: 1
+  timeoutSeconds: 1
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 5000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+  successThreshold: 1
+  timeoutSeconds: 1
+
+resources: {}
+
+terminationGracePeriodSeconds: 30

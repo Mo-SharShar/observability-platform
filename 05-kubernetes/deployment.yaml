@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: devops-hub
+  namespace: observability
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: devops-hub
+
+  template:
+    metadata:
+      labels:
+        app: devops-hub
+
+    spec:
+      containers:
+        - name: devops-hub
+          image: nginx:latest
+          ports:
+            - containerPort: 80

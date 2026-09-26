@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: alloy
+  namespace: observability
+
+spec:
+  # Send traffic to Alloy Pods
+  selector:
+    app: alloy
+
+  ports:
+
+    # OTLP over gRPC
+    # Payment API will send traces here
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+
+    # OTLP over HTTP
+    # We are exposing it now for future use
+    # even though Payment API currently uses gRPC.
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP

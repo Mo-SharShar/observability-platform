@@ -1,0 +1,28 @@
+services:
+
+  mimir:
+    image: grafana/mimir:latest
+    container_name: mimir
+    restart: unless-stopped
+
+    command:
+      - "-config.file=/etc/mimir/mimir-config.yaml"
+
+    ports:
+      - "9009:9009"
+
+    volumes:
+      - ./mimir/mimir-config.yaml:/etc/mimir/mimir-config.yaml:ro
+      - mimir-data:/data
+
+    networks:
+      - observability
+
+
+volumes:
+  mimir-data:
+
+
+networks:
+  observability:
+    external: true

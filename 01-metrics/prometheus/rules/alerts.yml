@@ -1,0 +1,383 @@
+groups:
+
+  # ==========================================================
+  # INFRASTRUCTURE ALERTS
+  # ==========================================================
+
+  - name: infrastructure-alerts
+
+    rules:
+
+      # --------------------------------------------------------
+      # CPU
+      # --------------------------------------------------------
+
+      - alert: HighCPUUsage
+
+        expr: |
+          100 * (
+            1 - avg by(instance) (
+              rate(
+                node_cpu_seconds_total{mode="idle"}[5m]
+              )
+            )
+          ) > 80
+
+        for: 5m
+
+        labels:
+          severity: warning
+          category: infrastructure
+
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage on {{ $labels.instance }} is above 80% for more than 5 minutes."
+
+
+      - alert: CriticalCPUUsage
+
+        expr: |
+          100 * (
+            1 - avg by(instance) (
+              rate(
+                node_cpu_seconds_total{mode="idle"}[5m]
+              )
+            )
+          ) > 95
+
+        for: 5m
+
+        labels:
+          severity: critical
+          category: infrastructure
+
+        annotations:
+          summary: "Critical CPU usage detected"
+          description: "CPU usage on {{ $labels.instance }} is above 95% for more than 5 minutes."
+
+
+      # --------------------------------------------------------
+      # MEMORY
+      # --------------------------------------------------------
+
+      - alert: HighMemoryUsage
+
+        expr: |
+          100 * (
+            1 - (
+              node_memory_MemAvailable_bytes
+              /
+              node_memory_MemTotal_bytes
+            )
+          ) > 80
+
+        for: 5m
+
+        labels:
+          severity: warning
+          category: infrastructure
+
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage on {{ $labels.instance }} is above 80% for more than 5 minutes."
+
+
+      - alert: CriticalMemoryUsage
+
+        expr: |
+          100 * (
+            1 - (
+              node_memory_MemAvailable_bytes
+              /
+              node_memory_MemTotal_bytes
+            )
+          ) > 95
+
+        for: 5m
+
+        labels:
+          severity: critical
+          category: infrastructure
+
+        annotations:
+          summary: "Critical memory usage detected"
+          description: "Memory usage on {{ $labels.instance }} is above 95% for more than 5 minutes."
+
+
+      # --------------------------------------------------------
+      # DISK
+      # --------------------------------------------------------
+
+      - alert: HighDiskUsage
+
+        expr: |
+          100 * (
+            1 - (
+              node_filesystem_avail_bytes{
+                mountpoint="/",
+                fstype!~"tmpfs|overlay"
+              }
+              /
+              node_filesystem_size_bytes{
+                mountpoint="/",
+                fstype!~"tmpfs|overlay"
+              }
+            )
+          ) > 80
+
+        for: 10m
+
+        labels:
+          severity: warning
+          category: infrastructure
+
+        annotations:
+          summary: "High disk usage detected"
+          description: "Root filesystem usage on {{ $labels.instance }} is above 80% for more than 10 minutes."
+
+
+      - alert: CriticalDiskUsage
+
+        expr: |
+          100 * (
+            1 - (
+              node_filesystem_avail_bytes{
+                mountpoint="/",
+                fstype!~"tmpfs|overlay"
+              }
+              /
+              node_filesystem_size_bytes{
+                mountpoint="/",
+                fstype!~"tmpfs|overlay"
+              }
+            )
+          ) > 90
+
+        for: 5m
+
+        labels:
+          severity: critical
+          category: infrastructure
+
+        annotations:
+          summary: "Critical disk usage detected"
+          description: "Root filesystem usage on {{ $labels.instance }} is above 90% for more than 5 minutes."
+
+
+      # --------------------------------------------------------
+      # NODE / INSTANCE
+      # --------------------------------------------------------
+
+      - alert: InstanceDown
+
+        expr: up{job="node-exporter"} == 0
+
+        for: 2m
+
+        labels:
+          severity: critical
+          category: infrastructure
+
+        annotations:
+          summary: "Node exporter is down"
+          description: "Node exporter target {{ $labels.instance }} has been unreachable for more than 2 minutes."
+
+
+  # ==========================================================
+  # PROMETHEUS SELF MONITORING
+  # ==========================================================
+
+  - name: prometheus-alerts
+
+    rules:
+
+      # --------------------------------------------------------
+      # TARGET HEALTH
+      # --------------------------------------------------------
+
+      - alert: PrometheusTargetDown
+
+        expr: up == 0
+
+        for: 2m
+
+        labels:
+          severity: warning
+          category: monitoring
+
+        annotations:
+          summary: "Prometheus target is down"
+          description: "Prometheus target {{ $labels.instance }} for job {{ $labels.job }} is down."
+
+
+      # --------------------------------------------------------
+      # RULE EVALUATION
+      # --------------------------------------------------------
+
+      - alert: PrometheusRuleEvaluationFailures
+
+        expr: |
+          increase(
+            prometheus_rule_evaluation_failures_total[5m]
+          ) > 0
+
+        for: 5m
+
+        labels:
+          severity: warning
+          category: monitoring
+
+        annotations:
+          summary: "Prometheus rule evaluation failures"
+          description: "Prometheus has experienced rule evaluation failures in the last 5 minutes."
+
+
+      # --------------------------------------------------------
+      # CONFIG RELOAD
+      # --------------------------------------------------------
+
+      - alert: PrometheusConfigReloadFailed
+
+        expr: |
+          prometheus_config_last_reload_successful == 0
+
+        for: 5m
+
+        labels:
+          severity: critical
+          category: monitoring
+
+        annotations:
+          summary: "Prometheus configuration reload failed"
+          description: "Prometheus failed to reload its configuration."
+
+
+      # --------------------------------------------------------
+      # REMOTE WRITE
+      # --------------------------------------------------------
+
+      - alert: PrometheusRemoteWriteFailures
+
+        expr: |
+          increase(
+            prometheus_remote_storage_failed_samples_total[5m]
+          ) > 0
+
+        for: 5m
+
+        labels:
+          severity: warning
+          category: monitoring
+
+        annotations:
+          summary: "Prometheus remote write failures"
+          description: "Prometheus has failed to send samples to the remote storage backend during the last 5 minutes."
+
+
+  # ==========================================================
+  # ALERTMANAGER ROUTING TEST
+  # ==========================================================
+
+  - name: alertmanager-routing-test
+
+    rules:
+
+      - alert: CriticalRoutingTest
+
+        expr: vector(1)
+
+        for: 30s
+
+        labels:
+          severity: critical
+          category: testing
+
+        annotations:
+          summary: "Critical routing test"
+          description: "Temporary test alert for Alertmanager critical routing."
+
+
+  # ==========================================================
+  # INHIBITION TEST
+  # ==========================================================
+
+  - name: inhibition-test
+
+    rules:
+
+      - alert: InstanceDownInhibitionTest
+
+        expr: vector(1)
+
+        for: 30s
+
+        labels:
+          severity: critical
+          category: infrastructure
+          instance: "test-instance"
+
+        annotations:
+          summary: "InstanceDown inhibition test"
+          description: "Temporary critical alert used to test Alertmanager inhibition."
+
+
+      - alert: HighCPUInhibitionTest
+
+        expr: vector(1)
+
+        for: 30s
+
+        labels:
+          severity: warning
+          category: infrastructure
+          instance: "test-instance"
+
+        annotations:
+          summary: "High CPU inhibition test"
+          description: "Temporary warning alert used to test Alertmanager inhibition."
+
+
+  # ==========================================================
+  # APPLICATION ALERTS
+  # ==========================================================
+
+  - name: application-alerts
+
+    rules:
+
+      # --------------------------------------------------------
+      # PAYMENT API
+      # --------------------------------------------------------
+
+      - alert: HighPaymentFailureRate
+
+        expr: |
+          (
+            sum(
+              rate(
+                payment_requests_total{
+                  job="kubernetes-payment-api",
+                  status="failed"
+                }[5m]
+              )
+            )
+            /
+            sum(
+              rate(
+                payment_requests_total{
+                  job="kubernetes-payment-api"
+                }[5m]
+              )
+            )
+          ) > 0.05
+
+        for: 2m
+
+        labels:
+          severity: critical
+          category: application
+          service: payment-api
+
+        annotations:
+          summary: "High payment failure rate"
+          description: "Payment API failure rate is above 5% for more than 2 minutes."

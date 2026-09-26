@@ -1,0 +1,155 @@
+global:
+  # How often Prometheus scrapes metrics from targets
+  scrape_interval: 15s
+
+  # How often Prometheus evaluates recording/alerting rules
+  evaluation_interval: 15s
+
+
+# ============================================================
+# ALERTMANAGER
+# ============================================================
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+
+
+# ============================================================
+# ALERTING / RECORDING RULES
+# ============================================================
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+
+# ============================================================
+# REMOTE WRITE → MIMIR
+# ============================================================
+
+remote_write:
+  - url: "http://mimir:9009/api/v1/push"
+
+
+# ============================================================
+# SCRAPE TARGETS
+# ============================================================
+
+scrape_configs:
+
+  # ----------------------------------------------------------
+  # Node Exporter
+  # ----------------------------------------------------------
+
+  - job_name: "node-exporter"
+
+    static_configs:
+      - targets:
+          - "node-exporter:9100"
+
+
+  # ----------------------------------------------------------
+  # Grafana Alloy
+  # ----------------------------------------------------------
+
+  - job_name: "alloy"
+
+    static_configs:
+      - targets:
+          - "alloy:12345"
+
+
+  # ----------------------------------------------------------
+  # Kubernetes EndpointSlice Discovery
+  # Payment API
+  # ----------------------------------------------------------
+
+  - job_name: "kubernetes-payment-api"
+
+    kubernetes_sd_configs:
+      - role: endpointslice
+
+        # Kubernetes API Server
+        api_server: "https://192.168.80.130:6443"
+
+        # ServiceAccount token used to authenticate
+        bearer_token_file: "/etc/prometheus/secrets/kubernetes_token"
+
+        # Temporary TLS configuration for the lab
+        # Production hardening will use the Kubernetes CA
+        tls_config:
+          insecure_skip_verify: true
+
+    relabel_configs:
+
+      # Keep ONLY the payment-api Service
+      # inside the observability namespace
+      - source_labels:
+          - __meta_kubernetes_namespace
+          - __meta_kubernetes_service_name
+        separator: "/"
+        regex: "observability/payment-api"
+        action: keep
+
+      # Add Kubernetes namespace as a Prometheus label
+      - source_labels:
+          - __meta_kubernetes_namespace
+        target_label: namespace
+
+      # Add Kubernetes Service name as a Prometheus label
+      - source_labels:
+          - __meta_kubernetes_service_name
+        target_label: service
+
+      # Add Kubernetes Pod name as a Prometheus label
+      - source_labels:
+          - __meta_kubernetes_pod_name
+        target_label: pod
+
+
+  # ----------------------------------------------------------
+  # Kubernetes EndpointSlice Discovery
+  # kube-state-metrics
+  # ----------------------------------------------------------
+
+  - job_name: "kubernetes-kube-state-metrics"
+
+    kubernetes_sd_configs:
+      - role: endpointslice
+
+        # Kubernetes API Server
+        api_server: "https://192.168.80.130:6443"
+
+        # ServiceAccount token used to authenticate
+        bearer_token_file: "/etc/prometheus/secrets/kubernetes_token"
+
+        # Temporary TLS configuration for the lab
+        tls_config:
+          insecure_skip_verify: true
+
+    relabel_configs:
+      # Keep ONLY the main KSM metrics port
+      - source_labels:
+          - __meta_kubernetes_pod_container_port_number
+        regex: "8080"
+        action: keep
+     # Keep ONLY kube-state-metrics
+     # inside the kube-system namespace
+      - source_labels:
+          - __meta_kubernetes_namespace
+          - __meta_kubernetes_service_name
+        separator: "/"
+        regex: "kube-system/kube-state-metrics"
+        action: keep
+
+      # Add Kubernetes namespace as a Prometheus label
+      - source_labels:
+          - __meta_kubernetes_namespace
+        target_label: namespace
+
+      # Add Kubernetes Service name as a Prometheus label
+      - source_labels:
+          - __meta_kubernetes_service_name
+        target_label: service

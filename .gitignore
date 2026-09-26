@@ -1,0 +1,27 @@
+# Terraform
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/*.tfstate
+**/*.tfstate.*
+
+# Kubernetes credentials / tokens
+01-metrics/prometheus/kubernetes/token
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/venv/
+
+# Vim / editor temporary files
+**/*.swp
+**/*.swo
+**/*~
+
+# Helm generated packages
+06-helm/payment-api/*.tgz
+
+# OS files
+.DS_Store
+Thumbs.db

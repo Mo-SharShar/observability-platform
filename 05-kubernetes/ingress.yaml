@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+
+kind: Ingress
+
+metadata:
+  name: devops-hub
+  namespace: observability
+
+spec:
+  ingressClassName: traefik
+
+  rules:
+    - host: devops-hub.local
+
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+
+            backend:
+              service:
+                name: devops-hub
+                port:
+                  number: 80

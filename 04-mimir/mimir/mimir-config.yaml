@@ -1,0 +1,44 @@
+multitenancy_enabled: false
+
+server:
+  http_listen_port: 9009
+
+ingester:
+  ring:
+    replication_factor: 1
+
+blocks_storage:
+  backend: filesystem
+
+  filesystem:
+    dir: /data/blocks
+
+  tsdb:
+    dir: /data/tsdb
+
+compactor:
+  data_dir: /data/compactor
+  
+store_gateway:
+  sharding_ring:
+    replication_factor: 1
+
+ruler:
+  enable_api: true
+
+ruler_storage:
+  backend: filesystem
+
+  filesystem:
+    dir: /data/ruler
+
+limits:
+  ingestion_rate: 100000
+  ingestion_burst_size: 200000
+  max_global_exemplars_per_user: 100000
+
+activity_tracker:
+  filepath: /data/activity.log
+
+usage_stats:
+  enabled: false

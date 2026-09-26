@@ -1,0 +1,31 @@
+services:
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    restart: unless-stopped
+
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+
+    volumes:
+      - ./tempo/tempo-config.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+
+    command:
+      - "-config.file=/etc/tempo/tempo.yaml"
+
+    networks:
+      - default
+      - observability
+
+
+volumes:
+  tempo-data:
+
+
+networks:
+  observability:
+    external: true
