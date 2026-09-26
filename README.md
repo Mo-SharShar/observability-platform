@@ -319,7 +319,7 @@ docs/screenshots/dashboard/payment-api-traces-logs.png    ← TODO: add screensh
 
 ## Grafana Alloy Architecture
 
-Alloy is the single collection/routing agent for all three telemetry signals in this project.
+Kubernetes Grafana Alloy is the primary collection and routing agent for the Payment API telemetry path.
 
 **Kubernetes deployment:**
 
@@ -372,7 +372,7 @@ Metrics verified as available and queryable:
 - Alloy build information (via Mimir)
 
 ```
-docs/screenshots/self-monitoring/alloy-self-monitoring.png   ← TODO: add screenshot
+docs/screenshots/operations/alloy-self-monitoring.png   ← TODO: add screenshot
 ```
 
 ---
@@ -477,7 +477,7 @@ appVersion: 3.2
 > The main observability-namespace Payment API deployment described earlier in this README is **not** Helm-managed. This chart is a separate, standalone packaging exercise demonstrating Helm release lifecycle management.
 
 ```
-docs/screenshots/helm/helm-upgrade-rollback.png   ← TODO: add screenshot
+docs/screenshots/automation/helm-upgrade-rollback.png   ← TODO: add screenshot
 ```
 
 ---
@@ -510,7 +510,7 @@ A separate Terraform lab demonstrates infrastructure-as-code fundamentals agains
 > Terraform in this lab manages only the `terraform-lab` namespace. It does **not** manage the `observability` namespace or any part of the core telemetry stack.
 
 ```
-docs/screenshots/terraform/drift-detection.png   ← TODO: add screenshot
+docs/screenshots/automation/terraform-drift-detection.png   ← TODO: add screenshot
 ```
 
 ---
