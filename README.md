@@ -373,7 +373,7 @@ Metrics verified as available and queryable:
 - Alloy build information (via Mimir)
 
 ```
-docs/screenshots/operations/alloy-self-monitoring.png   ← TODO: add screenshot
+docs/screenshots/operations/alloy-self-monitoring.png   
 ```
 
 ---
