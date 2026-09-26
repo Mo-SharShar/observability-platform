@@ -373,7 +373,7 @@ Metrics verified as available and queryable:
 - Alloy build information (via Mimir)
 
 ```
-docs/screenshots/operations/alloy-self-monitoring.png   
+docs/screenshots/operations/alloy-self-monitoring.png
 ```
 
 ---
@@ -410,7 +410,7 @@ blocks_retention_period: 7d
 This setting was **not supported** in the tested Mimir 3.2.0 configuration and was removed after the change failed. Retention behavior in this lab therefore reflects Mimir's defaults rather than an intentionally configured 7-day policy — this is documented here as an investigation result, not glossed over.
 
 ```
-docs/screenshots/storage/storage-capacity.png   ← TODO: add screenshot
+docs/screenshots/storage/storage-capacity.png
 ```
 
 ---
