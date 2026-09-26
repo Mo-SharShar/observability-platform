@@ -301,9 +301,10 @@ The primary dashboard, containing multiple sections:
 Because this dashboard is large, it is documented with multiple screenshots:
 
 ```
-docs/screenshots/dashboard/payment-api-overview.png       ← TODO: add screenshot
-docs/screenshots/dashboard/payment-api-performance.png    ← TODO: add screenshot
-docs/screenshots/dashboard/payment-api-traces-logs.png    ← TODO: add screenshot
+docs/screenshots/dashboard/overview.png
+docs/screenshots/dashboard/performance.png
+docs/screenshots/dashboard/traces.png
+docs/screenshots/dashboard/logs.png
 ```
 
 ### Other Dashboards
