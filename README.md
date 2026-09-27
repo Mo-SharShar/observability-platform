@@ -511,7 +511,7 @@ A separate Terraform lab demonstrates infrastructure-as-code fundamentals agains
 > Terraform in this lab manages only the `terraform-lab` namespace. It does **not** manage the `observability` namespace or any part of the core telemetry stack.
 
 ```
-docs/screenshots/automation/terraform-drift-detection.png   ← TODO: add screenshot
+docs/screenshots/automation/terraform-drift-detection.png
 ```
 
 ---
