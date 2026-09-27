@@ -70,9 +70,7 @@ The environment is a **hybrid Kubernetes + Docker** observability lab:
 - **Grafana Mimir, Loki, Tempo, and Grafana** run as **Docker Compose** services, acting as the telemetry backend.
 - The Kubernetes cluster currently has **one node**.
 
-```
-docs/architecture/architecture-diagram.png
-```
+![Observability Architecture](docs/architecture/architecture-diagram.png)
 
 High-level data flow:
 
@@ -372,9 +370,7 @@ Metrics verified as available and queryable:
 - `up{job="prometheus.scrape.alloy_self"} = 1`
 - Alloy build information (via Mimir)
 
-```
-docs/screenshots/operations/alloy-self-monitoring.png
-```
+![Alloy Self-Monitoring](docs/screenshots/operations/alloy-self-monitoring.png)
 
 ---
 
@@ -506,7 +502,7 @@ A separate Terraform lab demonstrates infrastructure-as-code fundamentals agains
 
 1. Manually scaled the Nginx deployment from 2 → 3 replicas (out-of-band change)
 2. `terraform plan` detected the drift (reported 3 → 2)
-3. `terraform apply` reconciled the deployment back to the Terraform-defined **2 replicas**
+3. The deployment was manually restored to the Terraform-defined **2 replicas** after the drift test
 
 > Terraform in this lab manages only the `terraform-lab` namespace. It does **not** manage the `observability` namespace or any part of the core telemetry stack.
 
