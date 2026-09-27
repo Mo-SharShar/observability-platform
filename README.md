@@ -440,7 +440,7 @@ Both replicas currently run on the **same single Kubernetes node**. This means:
 **Grafana Alloy** runs as a DaemonSet. With one node in the cluster, one Alloy pod is currently scheduled — this is expected DaemonSet behavior, not a limitation of Alloy itself.
 
 ```
-docs/screenshots/kubernetes/cluster-runtime.png   ← TODO: add screenshot
+docs/screenshots/kubernetes/cluster-runtime.png
 ```
 
 ---
@@ -478,7 +478,7 @@ appVersion: 3.2
 > The main observability-namespace Payment API deployment described earlier in this README is **not** Helm-managed. This chart is a separate, standalone packaging exercise demonstrating Helm release lifecycle management.
 
 ```
-docs/screenshots/automation/helm-upgrade-rollback.png   ← TODO: add screenshot
+docs/screenshots/automation/helm-upgrade-rollback.png
 ```
 
 ---
