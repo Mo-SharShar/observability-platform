@@ -71,7 +71,7 @@ The environment is a **hybrid Kubernetes + Docker** observability lab:
 - The Kubernetes cluster currently has **one node**.
 
 ```
-docs/architecture/architecture-diagram.png   ← TODO: add final architecture diagram
+docs/architecture/architecture-diagram.png
 ```
 
 High-level data flow:
