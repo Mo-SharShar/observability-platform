@@ -298,12 +298,11 @@ The primary dashboard, containing multiple sections:
 
 Because this dashboard is large, it is documented with multiple screenshots:
 
-```
-docs/screenshots/dashboard/overview.png
-docs/screenshots/dashboard/performance.png
-docs/screenshots/dashboard/traces.png
-docs/screenshots/dashboard/logs.png
-```
+
+![Payment API Overview](docs/screenshots/dashboard/overview.png)
+![Payment API Performance](docs/screenshots/dashboard/performance.png)
+![Payment API Traces](docs/screenshots/dashboard/traces.png)
+![Payment API Logs](docs/screenshots/dashboard/logs.png)
 
 ### Other Dashboards
 
@@ -405,9 +404,7 @@ blocks_retention_period: 7d
 
 This setting was **not supported** in the tested Mimir 3.2.0 configuration and was removed after the change failed. Retention behavior in this lab therefore reflects Mimir's defaults rather than an intentionally configured 7-day policy — this is documented here as an investigation result, not glossed over.
 
-```
-docs/screenshots/storage/storage-capacity.png
-```
+![Storage and Capacity](docs/screenshots/storage/storage-capacity.png)
 
 ---
 
@@ -435,9 +432,7 @@ Both replicas currently run on the **same single Kubernetes node**. This means:
 
 **Grafana Alloy** runs as a DaemonSet. With one node in the cluster, one Alloy pod is currently scheduled — this is expected DaemonSet behavior, not a limitation of Alloy itself.
 
-```
-docs/screenshots/kubernetes/cluster-runtime.png
-```
+![Kubernetes Cluster Runtime](docs/screenshots/kubernetes/cluster-runtime.png)
 
 ---
 
@@ -473,9 +468,7 @@ appVersion: 3.2
 
 > The main observability-namespace Payment API deployment described earlier in this README is **not** Helm-managed. This chart is a separate, standalone packaging exercise demonstrating Helm release lifecycle management.
 
-```
-docs/screenshots/automation/helm-upgrade-rollback.png
-```
+![Helm Upgrade and Rollback](docs/screenshots/automation/helm-upgrade-rollback.png)
 
 ---
 
@@ -506,9 +499,7 @@ A separate Terraform lab demonstrates infrastructure-as-code fundamentals agains
 
 > Terraform in this lab manages only the `terraform-lab` namespace. It does **not** manage the `observability` namespace or any part of the core telemetry stack.
 
-```
-docs/screenshots/automation/terraform-drift-detection.png
-```
+![Terraform Drift Detection](docs/screenshots/automation/terraform-drift-detection.png)
 
 ---
 
